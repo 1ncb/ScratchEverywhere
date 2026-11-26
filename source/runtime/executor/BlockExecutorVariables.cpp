@@ -2,9 +2,37 @@
 #include "math.hpp"
 #include <memory>
 #include <runtime.hpp>
+#include <filesystem>
+#include <fstream>
+#include <os.hpp>
 #include <string>
 #include <type_traits>
 #include <variant>
+
+namespace {
+constexpr const char *NIGHT_VAR_ID = "3WN3iP{R~G/?^ZwUoAF_";
+bool fnadSaveLoaded = false;
+
+std::string getFnadSavePath() {
+    std::string dir = OS::getScratchFolderLocation();
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    return dir + "fnad_save.txt";
+}
+
+std::string readFnadSavedNight() {
+    std::ifstream in(getFnadSavePath());
+    std::string val;
+    if (in >> val && !val.empty()) return val;
+    return "";
+}
+
+void writeFnadSavedNight(const std::string &val) {
+    if (val.empty() || val == "0") return;
+    std::ofstream out(getFnadSavePath(), std::ios::trunc);
+    if (out.is_open()) out << val;
+}
+} // namespace
 
 #ifdef ENABLE_CLOUDVARS
 #include <mist/mist.hpp>
@@ -42,6 +70,20 @@ void BlockExecutor::setVariableValue(const std::string &variableId, const Value 
     // Set global variable
     auto globalIt = Scratch::stageSprite->variables.find(variableId);
     if (globalIt != Scratch::stageSprite->variables.end()) {
+        if (variableId == NIGHT_VAR_ID) {
+            std::string incoming = newValue.asString();
+            if (!fnadSaveLoaded) {
+                fnadSaveLoaded = true;
+                std::string saved = readFnadSavedNight();
+                if (!saved.empty()) {
+                    globalIt->second.value = std::make_shared<std::string>(saved);
+                    return;
+                }
+            }
+            assignToVar(globalIt->second);
+            writeFnadSavedNight(getVariableValueAs<std::string>(&globalIt->second));
+            return;
+        }
         assignToVar(globalIt->second);
 #ifdef ENABLE_CLOUDVARS
         if (globalIt->second.cloud) {
