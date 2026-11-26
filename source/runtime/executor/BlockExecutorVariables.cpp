@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <os.hpp>
 #include <string>
-#include <sys/stat.h>
 #include <type_traits>
 #include <variant>
 
@@ -20,7 +19,6 @@ bool fnadCheckedDisk = false;
 std::string getFnadSavePath() {
     std::string dir = OS::getScratchFolderLocation();
     if (!dir.empty() && dir.back() == '/') dir.pop_back();
-    mkdir(dir.c_str(), 0777);
     return dir + "/fnad_save.txt";
 }
 
