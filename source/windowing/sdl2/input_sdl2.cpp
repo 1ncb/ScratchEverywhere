@@ -248,6 +248,7 @@ void InputDevice_SDL2::getInput() {
     button_handler(SCRATCH_KEY_INDEX::X, SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y);
 #else
     button_handler(SCRATCH_KEY_INDEX::A, SDL_CONTROLLER_BUTTON_INVALID);
+    if (SDL_GameControllerGetButton(controller, SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A)) Input::mousePointer.isPressed = true;
     button_handler(SCRATCH_KEY_INDEX::B, SDL_CONTROLLER_BUTTON_INVALID);
     if (SDL_GameControllerGetButton(controller, SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X)) {
         Input::buttonPress(CONTROLLER_STRINGS[static_cast<int>(SCRATCH_KEY_INDEX::X)]);
@@ -266,7 +267,7 @@ void InputDevice_SDL2::getInput() {
     if (SDL_GameControllerGetButton(controller, SDL2_GAMEPAD_KEYS[static_cast<int>(SCRATCH_KEY_INDEX::SHOULDER_R)])) {
         Input::buttonPress(CONTROLLER_STRINGS[static_cast<int>(SCRATCH_KEY_INDEX::SHOULDER_R)]);
 #if !defined(PLATFORM_HAS_MOUSE) && !defined(PLATFORM_HAS_TOUCH)
-        if (SDL_GameControllerGetButton(controller, SDL2_GAMEPAD_KEYS[static_cast<int>(SCRATCH_KEY_INDEX::SHOULDER_L)]) && Input::mousePointer.isMoving) Input::mousePointer.isPressed = true;
+        Input::mousePointer.isPressed = true;
 #endif
     }
     button_handler(SCRATCH_KEY_INDEX::START, SDL_CONTROLLER_BUTTON_INVALID);
@@ -296,17 +297,16 @@ void InputDevice_SDL2::getInput() {
     if (SDL_GameControllerGetAxis(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > CONTROLLER_DEADZONE_TRIGGER) {
         Input::buttonPress(CONTROLLER_STRINGS[static_cast<int>(SCRATCH_KEY_INDEX::RIGHT_TRIGGER)]);
 #if !defined(PLATFORM_HAS_MOUSE) && !defined(PLATFORM_HAS_TOUCH)
-        if (SDL_GameControllerGetButton(controller, SDL2_GAMEPAD_KEYS[static_cast<int>(SCRATCH_KEY_INDEX::SHOULDER_L)]) && Input::mousePointer.isMoving) Input::mousePointer.isPressed = true;
+        Input::mousePointer.isPressed = true;
 #endif
     }
 
 #if !defined(PLATFORM_HAS_MOUSE) && !defined(PLATFORM_HAS_TOUCH)
-    if (SDL_GameControllerGetButton(controller, SDL2_GAMEPAD_KEYS[static_cast<int>(SCRATCH_KEY_INDEX::SHOULDER_L)])) {
-        if (joyLeftX > CONTROLLER_DEADZONE_X) Input::mousePointer.x += 3;
-        if (joyLeftX < -CONTROLLER_DEADZONE_X) Input::mousePointer.x -= 3;
-        if (joyLeftY > CONTROLLER_DEADZONE_Y) Input::mousePointer.y -= 3;
-        if (joyLeftY < -CONTROLLER_DEADZONE_Y) Input::mousePointer.y += 3;
-    }
+    Input::mousePointer.isMoving = true;
+    if (joyLeftX > CONTROLLER_DEADZONE_X) Input::mousePointer.x += 6;
+    if (joyLeftX < -CONTROLLER_DEADZONE_X) Input::mousePointer.x -= 6;
+    if (joyLeftY > CONTROLLER_DEADZONE_Y) Input::mousePointer.y -= 6;
+    if (joyLeftY < -CONTROLLER_DEADZONE_Y) Input::mousePointer.y += 6;
     Input::mousePointer.x = std::clamp((float)Input::mousePointer.x, -Scratch::projectWidth * 0.5f, Scratch::projectWidth * 0.5f);
     Input::mousePointer.y = std::clamp((float)Input::mousePointer.y, -Scratch::projectHeight * 0.5f, Scratch::projectHeight * 0.5f);
 #endif
