@@ -43,8 +43,7 @@ void writeFnadSavedNight(int val) {
     fnadCheckedDisk = true;
     FILE *f = std::fopen(getFnadSavePath().c_str(), "w");
     if (f) {
-        std::fprintf(f, "%d
-", val);
+        std::fprintf(f, "%d ", val);
         std::fflush(f);
         std::fclose(f);
     }
