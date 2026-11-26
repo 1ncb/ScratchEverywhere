@@ -43,8 +43,8 @@ extern char nickname[0x21];
 
 #ifdef PLATFORM_HAS_CONTROLLER
 extern SDL_GameController *controller;
-#define CONTROLLER_DEADZONE_X 10000
-#define CONTROLLER_DEADZONE_Y 18000
+#define CONTROLLER_DEADZONE_X 4000
+#define CONTROLLER_DEADZONE_Y 4000
 #define CONTROLLER_DEADZONE_TRIGGER 1000
 #endif
 #ifdef PLATFORM_HAS_TOUCH
@@ -303,10 +303,16 @@ void InputDevice_SDL2::getInput() {
 
 #if !defined(PLATFORM_HAS_MOUSE) && !defined(PLATFORM_HAS_TOUCH)
     Input::mousePointer.isMoving = true;
-    if (joyLeftX > CONTROLLER_DEADZONE_X) Input::mousePointer.x += 6;
-    if (joyLeftX < -CONTROLLER_DEADZONE_X) Input::mousePointer.x -= 6;
-    if (joyLeftY > CONTROLLER_DEADZONE_Y) Input::mousePointer.y -= 6;
-    if (joyLeftY < -CONTROLLER_DEADZONE_Y) Input::mousePointer.y += 6;
+    if (std::abs(joyLeftX) > CONTROLLER_DEADZONE_X) {
+        float normX = (std::abs(joyLeftX) - CONTROLLER_DEADZONE_X) / (32767.0f - CONTROLLER_DEADZONE_X);
+        float speedX = (4.0f + normX * normX * 20.0f);
+        Input::mousePointer.x += (joyLeftX > 0 ? speedX : -speedX);
+    }
+    if (std::abs(joyLeftY) > CONTROLLER_DEADZONE_Y) {
+        float normY = (std::abs(joyLeftY) - CONTROLLER_DEADZONE_Y) / (32767.0f - CONTROLLER_DEADZONE_Y);
+        float speedY = (4.0f + normY * normY * 20.0f);
+        Input::mousePointer.y += (joyLeftY > 0 ? -speedY : speedY);
+    }
     Input::mousePointer.x = std::clamp((float)Input::mousePointer.x, -Scratch::projectWidth * 0.5f, Scratch::projectWidth * 0.5f);
     Input::mousePointer.y = std::clamp((float)Input::mousePointer.y, -Scratch::projectHeight * 0.5f, Scratch::projectHeight * 0.5f);
 #endif

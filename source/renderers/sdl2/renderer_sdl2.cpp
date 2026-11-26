@@ -695,14 +695,25 @@ void Renderer_SDL2::renderSprites() {
 
 #if !defined(PLATFORM_HAS_MOUSE) && !defined(PLATFORM_HAS_TOUCH)
     if (Input::mousePointer.isMoving) {
-        SDL_SetRenderDrawColor(Sdlrenderer, 0, 0, 255, 255);
-        SDL_Rect rect;
-        rect.w = rect.h = 5;
-        rect.x = (Input::mousePointer.x * Render::renderScale) + (window->getWidth() * 0.5);
-        rect.y = (Input::mousePointer.y * -1 * Render::renderScale) + (window->getHeight() * 0.5);
         Input::mousePointer.x = std::clamp((float)Input::mousePointer.x, -Scratch::projectWidth * 0.5f, Scratch::projectWidth * 0.5f);
         Input::mousePointer.y = std::clamp((float)Input::mousePointer.y, -Scratch::projectHeight * 0.5f, Scratch::projectHeight * 0.5f);
-        SDL_RenderDrawRect(Sdlrenderer, &rect);
+        int cx = static_cast<int>((Input::mousePointer.x * Render::renderScale) + (window->getWidth() * 0.5));
+        int cy = static_cast<int>((Input::mousePointer.y * -1 * Render::renderScale) + (window->getHeight() * 0.5));
+        // Outer black outline for visibility on bright backgrounds
+        SDL_SetRenderDrawColor(Sdlrenderer, 0, 0, 0, 255);
+        SDL_Rect hOut = {cx - 14, cy - 3, 28, 6};
+        SDL_Rect vOut = {cx - 3, cy - 14, 6, 28};
+        SDL_RenderFillRect(Sdlrenderer, &hOut);
+        SDL_RenderFillRect(Sdlrenderer, &vOut);
+        // Inner bright white crosshair + red center dot
+        SDL_SetRenderDrawColor(Sdlrenderer, 255, 255, 255, 255);
+        SDL_Rect hIn = {cx - 12, cy - 1, 24, 2};
+        SDL_Rect vIn = {cx - 1, cy - 12, 2, 24};
+        SDL_RenderFillRect(Sdlrenderer, &hIn);
+        SDL_RenderFillRect(Sdlrenderer, &vIn);
+        SDL_SetRenderDrawColor(Sdlrenderer, 255, 40, 40, 255);
+        SDL_Rect dot = {cx - 2, cy - 2, 4, 4};
+        SDL_RenderFillRect(Sdlrenderer, &dot);
     }
 #endif
 
