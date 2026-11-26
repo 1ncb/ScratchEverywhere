@@ -2,35 +2,60 @@
 #include "math.hpp"
 #include <memory>
 #include <runtime.hpp>
-#include <filesystem>
-#include <fstream>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <os.hpp>
 #include <string>
+#include <sys/stat.h>
 #include <type_traits>
 #include <variant>
 
 namespace {
 constexpr const char *NIGHT_VAR_ID = "3WN3iP{R~G/?^ZwUoAF_";
-bool fnadSaveLoaded = false;
+const auto fnadBootTime = std::chrono::steady_clock::now();
+int fnadCachedNight = 0;
+bool fnadCheckedDisk = false;
 
 std::string getFnadSavePath() {
     std::string dir = OS::getScratchFolderLocation();
-    std::error_code ec;
-    std::filesystem::create_directories(dir, ec);
-    return dir + "fnad_save.txt";
+    if (!dir.empty() && dir.back() == '/') dir.pop_back();
+    mkdir(dir.c_str(), 0777);
+    return dir + "/fnad_save.txt";
 }
 
-std::string readFnadSavedNight() {
-    std::ifstream in(getFnadSavePath());
-    std::string val;
-    if (in >> val && !val.empty()) return val;
-    return "";
+int readFnadSavedNight() {
+    if (!fnadCheckedDisk) {
+        fnadCheckedDisk = true;
+        FILE *f = std::fopen(getFnadSavePath().c_str(), "r");
+        if (f) {
+            int val = 0;
+            if (std::fscanf(f, "%d", &val) == 1 && val >= 1 && val <= 7) {
+                fnadCachedNight = val;
+            }
+            std::fclose(f);
+        }
+    }
+    return fnadCachedNight;
 }
 
-void writeFnadSavedNight(const std::string &val) {
-    if (val.empty() || val == "0") return;
-    std::ofstream out(getFnadSavePath(), std::ios::trunc);
-    if (out.is_open()) out << val;
+void writeFnadSavedNight(int val) {
+    if (val < 1 || val > 7) return;
+    fnadCachedNight = val;
+    fnadCheckedDisk = true;
+    FILE *f = std::fopen(getFnadSavePath().c_str(), "w");
+    if (f) {
+        std::fprintf(f, "%d
+", val);
+        std::fflush(f);
+        std::fclose(f);
+    }
+}
+
+bool isBootGracePeriod() {
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - fnadBootTime).count();
+    return elapsed < 2500;
 }
 } // namespace
 
@@ -71,17 +96,16 @@ void BlockExecutor::setVariableValue(const std::string &variableId, const Value 
     auto globalIt = Scratch::stageSprite->variables.find(variableId);
     if (globalIt != Scratch::stageSprite->variables.end()) {
         if (variableId == NIGHT_VAR_ID) {
-            std::string incoming = newValue.asString();
-            if (!fnadSaveLoaded) {
-                fnadSaveLoaded = true;
-                std::string saved = readFnadSavedNight();
-                if (!saved.empty()) {
-                    globalIt->second.value = std::make_shared<std::string>(saved);
-                    return;
-                }
+            int incoming = static_cast<int>(newValue.asDouble());
+            int saved = readFnadSavedNight();
+            if (isBootGracePeriod() && saved >= 2) {
+                globalIt->second.value = std::make_shared<std::string>(std::to_string(saved));
+                return;
             }
             assignToVar(globalIt->second);
-            writeFnadSavedNight(getVariableValueAs<std::string>(&globalIt->second));
+            if (incoming >= 1 && incoming <= 7) {
+                writeFnadSavedNight(incoming);
+            }
             return;
         }
         assignToVar(globalIt->second);
@@ -108,8 +132,17 @@ Variable *BlockExecutor::getVariable(const std::string &variableId, Sprite *spri
     }
 
     // Check global variables
-    const auto globalIt = Scratch::stageSprite->variables.find(variableId);
+    auto globalIt = Scratch::stageSprite->variables.find(variableId);
     if (globalIt != Scratch::stageSprite->variables.end()) {
+        if (variableId == NIGHT_VAR_ID) {
+            int saved = readFnadSavedNight();
+            int cur = static_cast<int>(getVariableValueAs<double>(&globalIt->second));
+            if (isBootGracePeriod() && saved >= 2 && cur != saved) {
+                globalIt->second.value = std::make_shared<std::string>(std::to_string(saved));
+            } else if (!isBootGracePeriod() && cur >= 2 && cur <= 7 && cur != saved) {
+                writeFnadSavedNight(cur);
+            }
+        }
         return &globalIt->second;
     }
 
